@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PencilIcon, TrashIcon, EyeIcon } from "@phosphor-icons/react";
+import Swal from "sweetalert2";
 
 interface Game {
     id: number;
@@ -139,8 +140,58 @@ export default function GamesTable({ initialGames }: { initialGames: Game[] }) {
         router.push(`/games/${id}/edit`);
     };
 
-    const handleDelete = (candidate: Game) => {
-        setDeleteCandidate(candidate);
+    const handleDelete = async (candidate: Game) => {
+        const result = await Swal.fire({
+            icon: "warning",
+            title: "¿Eliminar juego?",
+            html: `¿Estás seguro de que quieres eliminar <strong>${candidate.title}</strong>? Esta acción no se puede deshacer.`,
+            showCancelButton: true,
+            confirmButtonText: "Eliminar",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+        });
+
+        if (!result.isConfirmed) return;
+
+        setIsDeleting(true);
+
+        try {
+            const response = await fetch(`/api/games/${candidate.id}`, {
+                method: 'DELETE',
+                cache: 'no-store',
+            });
+            const resultData = await response.json().catch(() => null);
+            if (response.ok) {
+                await Swal.fire({
+                    icon: "success",
+                    title: "¡Eliminado!",
+                    text: `${candidate.title} ha sido eliminado exitosamente.`,
+                    confirmButtonText: "Aceptar",
+                    confirmButtonColor: "#3085d6",
+                });
+                router.replace('/games');
+            } else {
+                await Swal.fire({
+                    icon: "error",
+                    title: "Error al eliminar",
+                    text: resultData?.error || 'Error al eliminar el juego',
+                    confirmButtonText: "Aceptar",
+                    confirmButtonColor: "#d33",
+                });
+            }
+        } catch (error) {
+            console.error('Error deleting game:', error);
+            await Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: 'Error al eliminar el juego',
+                confirmButtonText: "Aceptar",
+                confirmButtonColor: "#d33",
+            });
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const closeDeleteModal = () => {
@@ -405,40 +456,6 @@ export default function GamesTable({ initialGames }: { initialGames: Game[] }) {
                     </tbody>
                 </table>
             </div>
-
-            {deleteCandidate && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
-                    <div role="dialog" aria-modal="true" aria-labelledby="delete-game-title" className="w-full max-w-lg rounded-[32px] border border-base-200 bg-base-100 p-6 shadow-2xl shadow-black/40">
-                        <div className="mb-4">
-                            <h2 id="delete-game-title" className="text-2xl font-bold text-red-600">Eliminar juego</h2>
-                            <p className="mt-2 text-sm text-slate-600">
-                                ¿Estás seguro de que quieres eliminar <strong>{deleteCandidate.title}</strong>? Esta acción no se puede deshacer.
-                            </p>
-                        </div>
-                        <div className="mb-6 rounded-3xl border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900">
-                            <p>El juego se eliminará permanentemente de la base de datos.</p>
-                        </div>
-                        <div className="flex flex-wrap gap-3 justify-end">
-                            <button
-                                type="button"
-                                onClick={closeDeleteModal}
-                                className="btn btn-ghost"
-                                disabled={isDeleting}
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={confirmDelete}
-                                className={`btn btn-error ${isDeleting ? 'loading' : ''}`}
-                                disabled={isDeleting}
-                            >
-                                {isDeleting ? 'Eliminando...' : 'Eliminar juego'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Paginación - Responsive */}
             {filteredGames.length > 0 && (

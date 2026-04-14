@@ -13,6 +13,7 @@ export default function SideBar({
     const navigation = [
         { name: "Dashboard", href: "/dashboard", icon: SquaresFourIcon },
         { name: "Games", href: "/games", icon: JoystickIcon },
+        { name: "Consolas", href: "/consoles", icon: GameControllerIcon },
         { name: "Add Game", href: "/games/add", icon: PlusIcon },
         { name: "Settings", href: "/settings", icon: GearIcon },
     ];

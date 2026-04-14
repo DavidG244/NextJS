@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@/app/generated/prisma";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
+import { gameSchema } from "@/lib/validations/game";
 import fs from "fs/promises";
 import path from "path";
 
@@ -128,6 +129,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
         }
 
         const body = await parseGameRequest(request);
+        const validation = gameSchema.safeParse(body);
+
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: validation.error.format() },
+                { status: 400 }
+            );
+        }
+
         const {
             title,
             cover,
@@ -136,21 +146,60 @@ export async function PUT(request: Request, { params }: RouteParams) {
             price,
             genre,
             description,
-            console_id
-        } = body;
+            console_id,
+        } = validation.data;
+
+        // Verify that the console exists
+        const consoleExists = await prisma.console.findUnique({
+            where: { id: console_id },
+        });
+
+        if (!consoleExists) {
+            return NextResponse.json(
+                { error: "La consola seleccionada no existe" },
+                { status: 400 }
+            );
+        }
+
+        const existingGame = await prisma.game.findUnique({
+            where: { id: gameId },
+            select: { cover: true },
+        });
+
+        if (!existingGame) {
+            return NextResponse.json(
+                { error: "Juego no encontrado" },
+                { status: 404 }
+            );
+        }
 
         const data: any = {
             title,
             developer,
             releaseDate: new Date(releaseDate),
-            price: parseFloat(String(price)),
+            price,
             genre,
             description,
-            console_id: parseInt(String(console_id)),
+            console: {
+                connect: { id: console_id },
+            },
         };
 
         if (cover) {
             data.cover = cover;
+
+            if (
+                existingGame.cover &&
+                existingGame.cover !== cover &&
+                existingGame.cover.startsWith("/uploads/")
+            ) {
+                const oldCoverFile = path.join(UPLOADS_DIR, path.basename(existingGame.cover));
+                try {
+                    await fs.unlink(oldCoverFile);
+                } catch (unlinkError) {
+                    console.warn("No se pudo eliminar la portada anterior:", unlinkError);
+                }
+            }
         }
 
         const game = await prisma.game.update({

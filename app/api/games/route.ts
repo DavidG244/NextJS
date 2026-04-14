@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@/app/generated/prisma";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { gameSchema } from "@/lib/validations/game";
 import fs from "fs/promises";
 import path from "path";
 
@@ -100,6 +101,15 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await parseGameRequest(request);
+        const validation = gameSchema.safeParse(body);
+
+        if (!validation.success) {
+            return NextResponse.json(
+                { error: validation.error.format() },
+                { status: 400 }
+            );
+        }
+
         const {
             title,
             cover,
@@ -108,22 +118,17 @@ export async function POST(request: Request) {
             price,
             genre,
             description,
-            console_id
-        } = body;
+            console_id,
+        } = validation.data;
 
-        const parsedPrice = parseFloat(String(price));
-        const parsedConsoleId = parseInt(String(console_id), 10);
+        // Verify that the console exists
+        const consoleExists = await prisma.console.findUnique({
+            where: { id: console_id },
+        });
 
-        if (Number.isNaN(parsedPrice)) {
+        if (!consoleExists) {
             return NextResponse.json(
-                { error: "Precio inválido" },
-                { status: 400 }
-            );
-        }
-
-        if (Number.isNaN(parsedConsoleId)) {
-            return NextResponse.json(
-                { error: "Consola inválida" },
+                { error: "La consola seleccionada no existe" },
                 { status: 400 }
             );
         }
@@ -132,12 +137,15 @@ export async function POST(request: Request) {
             title,
             developer,
             releaseDate: new Date(releaseDate),
-            price: parsedPrice,
+            price,
             genre,
             description,
-            console_id: parsedConsoleId,
+            console: {
+                connect: { id: console_id },
+            },
         };
 
+        // Only add cover if it has a value
         if (cover) {
             data.cover = cover;
         }
