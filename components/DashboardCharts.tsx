@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   ResponsiveContainer,
   PieChart,
@@ -26,6 +27,15 @@ type GameChartProps = {
 const PIE_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#22c55e", "#14b8a6", "#f97316"];
 
 export default function DashboardCharts({ games }: GameChartProps) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const updateMobile = () => setIsMobile(window.innerWidth <= 640);
+    updateMobile();
+    window.addEventListener("resize", updateMobile);
+    return () => window.removeEventListener("resize", updateMobile);
+  }, []);
+
   const gamesByConsole = games.reduce<Record<string, number>>((acc, game) => {
     const consoleName = game.console?.name ?? "Sin consola";
     acc[consoleName] = (acc[consoleName] ?? 0) + 1;
@@ -86,9 +96,19 @@ export default function DashboardCharts({ games }: GameChartProps) {
         </div>
         <div className="h-[360px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={yearData} margin={{ top: 10, right: 24, left: 0, bottom: 16 }}>
+            <BarChart data={yearData} margin={{ top: 10, right: 24, left: 0, bottom: isMobile ? 32 : 16 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" interval={0} tick={{ fontSize: 12 }} tickMargin={8} />
+              <XAxis
+                dataKey="year"
+                interval={0}
+                height={isMobile ? 60 : 40}
+                tick={{
+                  fontSize: isMobile ? 10 : 12,
+                  angle: isMobile ? -45 : 0,
+                  textAnchor: isMobile ? "end" : "middle",
+                }}
+                tickMargin={isMobile ? 12 : 8}
+              />
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend verticalAlign="top" height={36} />
