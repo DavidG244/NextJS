@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     const validation = consoleSchema.safeParse(body);
     if (!validation.success) {
-        const errors = validation.error.errors.map((err) => err.message).join(", ");
+        const errors = validation.error.issues.map((issue) => issue.message).join(", ");
         return NextResponse.json({ error: errors }, { status: 400 });
     }
 
