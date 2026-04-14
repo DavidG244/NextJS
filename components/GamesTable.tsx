@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PencilIcon, TrashIcon, EyeIcon } from "@phosphor-icons/react";
-import Swal from "sweetalert2";
+import Swal from "@/lib/swal";
 
 interface Game {
     id: number;

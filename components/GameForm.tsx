@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Swal from "sweetalert2";
+import Swal from "@/lib/swal";
 
 interface Console {
     id: number;
